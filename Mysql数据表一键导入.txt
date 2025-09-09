@@ -1,0 +1,113 @@
+-- 1. 创建数据库（支持中文和emoji）
+CREATE DATABASE IF NOT EXISTS mobile_phone_db 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+USE mobile_phone_db;
+
+-- 2. 品牌表
+CREATE TABLE IF NOT EXISTS brand (
+  brand_id INT PRIMARY KEY AUTO_INCREMENT COMMENT '品牌ID', -- 单字段主键，此处声明即可
+  brand_name VARCHAR(50) NOT NULL UNIQUE COMMENT '品牌名称（如华为、苹果）',
+  brand_logo VARCHAR(255) COMMENT '品牌LOGO图片URL',
+  origin VARCHAR(50) COMMENT '品牌 origin（如中国、美国）',
+  is_enabled TINYINT DEFAULT 1 COMMENT '是否启用（1:是,0:否）',
+  created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_brand_name (brand_name) -- 保留品牌名称索引
+) ENGINE=InnoDB COMMENT '手机品牌表';
+
+-- 3. 手机型号表
+CREATE TABLE IF NOT EXISTS phone_model (
+  model_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '型号ID',
+  model_code VARCHAR(50) UNIQUE NOT NULL COMMENT '内部型号编码（如HW-MATE60-2024）',
+  official_name VARCHAR(100) NOT NULL COMMENT '官方名称（如华为Mate 60 Pro）',
+  brand_id INT NOT NULL COMMENT '所属品牌ID',
+  release_date DATE COMMENT '发布日期',
+  market_price DECIMAL(10,2) COMMENT '上市指导价',
+  main_image VARCHAR(255) COMMENT '主图URL',
+  description TEXT COMMENT '产品简介',
+  is_on_sale TINYINT DEFAULT 1 COMMENT '是否在售（1:是,0:否）',
+  created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (brand_id) REFERENCES brand(brand_id),
+  INDEX idx_brand_id (brand_id),
+  INDEX idx_is_on_sale (is_on_sale)
+) ENGINE=InnoDB COMMENT '手机型号表';
+
+-- 4. 配置参数表
+CREATE TABLE IF NOT EXISTS phone_spec (
+  spec_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '配置ID',
+  model_id BIGINT NOT NULL COMMENT '关联型号ID',
+  cpu_model VARCHAR(100) COMMENT '处理器型号（如骁龙8 Gen3）',
+  screen_size DECIMAL(5,2) COMMENT '屏幕尺寸（英寸，如6.7）',
+  screen_resolution VARCHAR(50) COMMENT '屏幕分辨率（如2796×1290）',
+  screen_refresh INT COMMENT '屏幕刷新率（Hz，如120）',
+  ram_capacity INT COMMENT '运行内存（GB，如12）',
+  rom_capacity INT COMMENT '机身存储（GB，如256）',
+  battery_capacity INT COMMENT '电池容量（mAh，如5000）',
+  charge_power INT COMMENT '充电功率（W，如67）',
+  rear_camera VARCHAR(255) COMMENT '后置摄像头（如5000万主摄+1300万超广角）',
+  front_camera VARCHAR(100) COMMENT '前置摄像头（如1600万像素）',
+  os_version VARCHAR(100) COMMENT '操作系统（如HarmonyOS 4.0）',
+  network_type VARCHAR(50) COMMENT '网络类型（如5G全网通）',
+  body_weight INT COMMENT '机身重量（g，如221）',
+  body_material VARCHAR(100) COMMENT '机身材质（如钛金属中框+玻璃后盖）',
+  FOREIGN KEY (model_id) REFERENCES phone_model(model_id) ON DELETE CASCADE,
+  INDEX idx_model_id (model_id)
+) ENGINE=InnoDB COMMENT '手机配置参数表';
+
+-- 5. SKU表
+CREATE TABLE IF NOT EXISTS phone_sku (
+  sku_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'SKU ID',
+  model_id BIGINT NOT NULL COMMENT '关联型号ID',
+  sku_code VARCHAR(50) UNIQUE NOT NULL COMMENT 'SKU编码（如HW-MATE60-12+256-黑）',
+  color VARCHAR(50) NOT NULL COMMENT '颜色（如黑色、白色、雅川青）',
+  storage_combo VARCHAR(20) NOT NULL COMMENT '存储组合（如12+256GB）',
+  selling_price DECIMAL(10,2) NOT NULL COMMENT '销售价',
+  cost_price DECIMAL(10,2) COMMENT '成本价',
+  stock_quantity INT NOT NULL DEFAULT 0 COMMENT '库存数量',
+  stock_warning INT DEFAULT 10 COMMENT '库存预警值',
+  color_image VARCHAR(255) COMMENT '该颜色的图片URL',
+  created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (model_id) REFERENCES phone_model(model_id) ON DELETE CASCADE,
+  INDEX idx_model_id (model_id),
+  INDEX idx_stock_quantity (stock_quantity)
+) ENGINE=InnoDB COMMENT '手机SKU表（按颜色/存储细分）';
+
+-- 6. 合规信息表
+CREATE TABLE IF NOT EXISTS compliance_info (
+  compliance_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '合规ID',
+  model_id BIGINT NOT NULL COMMENT '关联型号ID',
+  three_cert VARCHAR(100) COMMENT '3C认证编号',
+  network_cert VARCHAR(100) COMMENT '进网许可证编号',
+  warranty_period INT DEFAULT 12 COMMENT '保修期限（月）',
+  warranty_scope TEXT COMMENT '保修范围说明',
+  environmental_std VARCHAR(50) COMMENT '环保标准（如中国RoHS）',
+  FOREIGN KEY (model_id) REFERENCES phone_model(model_id) ON DELETE CASCADE,
+  UNIQUE INDEX idx_model_id (model_id)
+) ENGINE=InnoDB COMMENT '手机合规信息表';
+
+-- 7. 初始化示例数据
+INSERT INTO brand (brand_name, origin) VALUES
+('华为', '中国'),
+('苹果', '美国'),
+('小米', '中国'),
+('三星', '韩国');
+
+INSERT INTO phone_model (model_code, official_name, brand_id, release_date, market_price, description) VALUES
+('HW-MATE60-2024', '华为Mate 60 Pro', 1, '2023-08-29', 6999.00, '搭载麒麟9000S芯片，支持卫星通信'),
+('AP-IP15PRO-2024', 'iPhone 15 Pro', 2, '2023-09-12', 9999.00, '搭载A17 Pro芯片，钛金属机身');
+
+INSERT INTO phone_spec (model_id, cpu_model, screen_size, screen_resolution, screen_refresh, ram_capacity, rom_capacity, battery_capacity, charge_power, rear_camera, os_version) VALUES
+(1, '麒麟9000S', 6.8, '2720×1260', 120, 12, 256, 5000, 66, '5000万像素超光变主摄+1300万像素超广角+4800万像素长焦', 'HarmonyOS 4.0'),
+(2, 'A17 Pro', 6.1, '2532×1170', 120, 8, 256, 3279, 27, '4800万像素主摄+1200万像素超广角+1200万像素长焦', 'iOS 17');
+
+INSERT INTO phone_sku (model_id, sku_code, color, storage_combo, selling_price, stock_quantity) VALUES
+(1, 'HW-MATE60-12+256-黑', '黑色', '12+256GB', 6999.00, 150),
+(1, 'HW-MATE60-12+512-青', '雅川青', '12+512GB', 7999.00, 80),
+(2, 'AP-IP15-8+256-白', '白色', '8+256GB', 9999.00, 120);
+
+INSERT INTO compliance_info (model_id, three_cert, network_cert, warranty_period) VALUES
+(1, '202301160658764', '02-8734-235678', 12),
+(2, '202301160659123', '02-8734-235690', 12);
